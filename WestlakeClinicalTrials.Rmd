@@ -1,0 +1,506 @@
+---
+title: "Westlake Clinical Trials"
+author: "Christopher Banner"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+
+## SQL MARKDOWN FOR WESTLAKE CLINICAL TRIAL DATABASE
+
+
+## CREATING THE TABLES FOR THE DATABASE
+
+
+```SQL
+CREATE TABLE Patient (
+    PatientID INT PRIMARY KEY,
+    Name VARCHAR(255) NOT NULL,
+    Address VARCHAR(255),
+    BirthDate DATE,
+    EligibilityCriteria VARCHAR(255) CHECK (EligibilityCriteria = 'Met')
+);
+
+CREATE TABLE Doctor (
+    DoctorID INT PRIMARY KEY,
+    Name VARCHAR(255) NOT NULL,
+    Specialization VARCHAR(255),
+    ContactInfo VARCHAR(255)
+);
+
+
+CREATE TABLE Visit (
+    VisitID INT PRIMARY KEY,
+    Date DATE NOT NULL,
+    Time TIME NOT NULL,
+    PatientID INT,
+    DoctorID INT,
+    Observations TEXT,
+    FOREIGN KEY (PatientID) REFERENCES Patient(PatientID),
+    FOREIGN KEY (DoctorID) REFERENCES Doctor(DoctorID)
+);
+
+
+CREATE TABLE Medication (
+    MedicationID INT PRIMARY KEY,
+    Name VARCHAR(255) NOT NULL,
+    Dosage VARCHAR(255),
+    PotentialSideEffects TEXT
+);
+
+
+CREATE TABLE SideEffect (
+    SideEffectID INT PRIMARY KEY,
+    Description TEXT NOT NULL,
+    Severity VARCHAR(255),
+    MedicationID INT,
+    FOREIGN KEY (MedicationID) REFERENCES Medication(MedicationID)
+);
+
+
+CREATE TABLE MedicalHistory (
+    HistoryID INT PRIMARY KEY,
+    PatientID INT,
+    Conditions TEXT,
+    LastUpdated DATE,
+    FOREIGN KEY (PatientID) REFERENCES Patient(PatientID)
+);
+
+
+CREATE TABLE FamilyHistory (
+    HistoryID INT PRIMARY KEY,
+    PatientID INT,
+    FamilyConditions TEXT,
+    LastUpdated DATE,
+    FOREIGN KEY (PatientID) REFERENCES Patient(PatientID)
+);
+
+
+CREATE TABLE DepressionSymptoms (
+    SymptomID INT PRIMARY KEY,
+    PatientID INT,
+    SymptomDescription TEXT NOT NULL,
+    Severity VARCHAR(255),
+    FOREIGN KEY (PatientID) REFERENCES Patient(PatientID)
+);
+
+
+CREATE TABLE PatientsSideEffects (
+    PatientID INT,
+    SideEffectID INT,
+    PRIMARY KEY (PatientID, SideEffectID),
+    FOREIGN KEY (PatientID) REFERENCES Patient(PatientID),
+    FOREIGN KEY (SideEffectID) REFERENCES SideEffect(SideEffectID)
+);
+
+
+CREATE TABLE AuditLog (
+    LogID INT PRIMARY KEY IDENTITY,
+    TableName NVARCHAR(50),
+    Operation NVARCHAR(50),
+    ChangedBy NVARCHAR(50),
+    ChangeDate DATETIME DEFAULT GETDATE(),
+    OldValue NVARCHAR(MAX),
+    NewValue NVARCHAR(MAX)
+);
+
+CREATE TABLE DataDictionary (
+    TableName VARCHAR(255) NOT NULL,
+    ColumnName VARCHAR(255) NOT NULL,
+    DataType VARCHAR(255) NOT NULL,
+    IsNullable VARCHAR(3) NOT NULL,
+    IsPrimaryKey VARCHAR(3) NOT NULL,
+    IsForeignKey VARCHAR(3) NOT NULL,
+    ReferencesTable VARCHAR(255),
+    ReferencesColumn VARCHAR(255),
+    Description TEXT
+);
+
+CREATE TABLE TestPlan (
+    TestID INT IDENTITY(1,1) PRIMARY KEY,
+    RuleName NVARCHAR(255),
+    TestName NVARCHAR(255),
+    SQLQuery NVARCHAR(MAX),
+    ExpectedResult NVARCHAR(MAX),
+    ActualResult NVARCHAR(MAX),
+    Status NVARCHAR(50),
+    CreatedDate DATETIME DEFAULT GETDATE(),
+    LastUpdatedDate DATETIME DEFAULT GETDATE()
+);
+```
+```
+
+## INSERTING THE APPROPRIATE INFORMATION INTO EACH TABLE
+
+``` SQL
+
+INSERT INTO DataDictionary (TableName, ColumnName, DataType, IsNullable, IsPrimaryKey, IsForeignKey, ReferencesTable, ReferencesColumn, Description) VALUES
+# Patient table
+('Patient', 'PatientID', 'INT', 'NO', 'YES', 'NO', NULL, NULL, 'Primary Key, unique identifier for each patient'),
+('Patient', 'Name', 'VARCHAR(255)', 'NO', 'NO', 'NO', NULL, NULL, 'Name of the patient'),
+('Patient', 'Address', 'VARCHAR(255)', 'YES', 'NO', 'NO', NULL, NULL, 'Address of the patient'),
+('Patient', 'BirthDate', 'DATE', 'YES', 'NO', 'NO', NULL, NULL, 'Birth date of the patient'),
+('Patient', 'EligibilityCriteria', 'VARCHAR(255)', 'NO', 'NO', 'NO', NULL, NULL, 'Eligibility criteria for the patient'),
+
+-- Doctor table
+('Doctor', 'DoctorID', 'INT', 'NO', 'YES', 'NO', NULL, NULL, 'Primary Key, unique identifier for each doctor'),
+('Doctor', 'Name', 'VARCHAR(255)', 'NO', 'NO', 'NO', NULL, NULL, 'Name of the doctor'),
+('Doctor', 'Specialization', 'VARCHAR(255)', 'YES', 'NO', 'NO', NULL, NULL, 'Specialization of the doctor'),
+('Doctor', 'ContactInfo', 'VARCHAR(255)', 'YES', 'NO', 'NO', NULL, NULL, 'Contact information for the doctor'),
+
+-- Visit table
+('Visit', 'VisitID', 'INT', 'NO', 'YES', 'NO', NULL, NULL, 'Primary Key, unique identifier for each visit'),
+('Visit', 'Date', 'DATE', 'NO', 'NO', 'NO', NULL, NULL, 'Date of the visit'),
+('Visit', 'Time', 'TIME', 'NO', 'NO', 'NO', NULL, NULL, 'Time of the visit'),
+('Visit', 'PatientID', 'INT', 'NO', 'NO', 'YES', 'Patient', 'PatientID', 'Foreign Key, references Patient(PatientID)'),
+('Visit', 'DoctorID', 'INT', 'NO', 'NO', 'YES', 'Doctor', 'DoctorID', 'Foreign Key, references Doctor(DoctorID)'),
+('Visit', 'Observations', 'TEXT', 'YES', 'NO', 'NO', NULL, NULL, 'Observations made during the visit'),
+
+-- Medication table
+('Medication', 'MedicationID', 'INT', 'NO', 'YES', 'NO', NULL, NULL, 'Primary Key, unique identifier for each medication'),
+('Medication', 'Name', 'VARCHAR(255)', 'NO', 'NO', 'NO', NULL, NULL, 'Name of the medication'),
+('Medication', 'Dosage', 'VARCHAR(255)', 'YES', 'NO', 'NO', NULL, NULL, 'Dosage information for the medication'),
+('Medication', 'PotentialSideEffects', 'TEXT', 'YES', 'NO', 'NO', NULL, NULL, 'Potential side effects of the medication'),
+
+-- SideEffect table
+('SideEffect', 'SideEffectID', 'INT', 'NO', 'YES', 'NO', NULL, NULL, 'Primary Key, unique identifier for each side effect'),
+('SideEffect', 'Description', 'TEXT', 'NO', 'NO', 'NO', NULL, NULL, 'Description of the side effect'),
+('SideEffect', 'Severity', 'VARCHAR(255)', 'YES', 'NO', 'NO', NULL, NULL, 'Severity of the side effect'),
+('SideEffect', 'MedicationID', 'INT', 'NO', 'NO', 'YES', 'Medication', 'MedicationID', 'Foreign Key, references Medication(MedicationID)'),
+
+-- MedicalHistory table
+('MedicalHistory', 'HistoryID', 'INT', 'NO', 'YES', 'NO', NULL, NULL, 'Primary Key, unique identifier for each medical history record'),
+('MedicalHistory', 'PatientID', 'INT', 'NO', 'NO', 'YES', 'Patient', 'PatientID', 'Foreign Key, references Patient(PatientID)'),
+('MedicalHistory', 'Conditions', 'TEXT', 'YES', 'NO', 'NO', NULL, NULL, 'Medical conditions of the patient'),
+('MedicalHistory', 'LastUpdated', 'DATE', 'YES', 'NO', 'NO', NULL, NULL, 'The date when the medical history was last updated'),
+
+-- FamilyHistory table
+('FamilyHistory', 'HistoryID', 'INT', 'NO', 'YES', 'NO', NULL, NULL, 'Primary Key, unique identifier for each family history record'),
+('FamilyHistory', 'PatientID', 'INT', 'NO', 'NO', 'YES', 'Patient', 'PatientID', 'Foreign Key, references Patient(PatientID)'),
+('FamilyHistory', 'FamilyConditions', 'TEXT', 'YES', 'NO', 'NO', NULL, NULL, 'Family medical conditions'),
+('FamilyHistory', 'LastUpdated', 'DATE', 'YES', 'NO', 'NO', NULL, NULL, 'The date when the family history was last updated'),
+
+-- DepressionSymptoms table
+('DepressionSymptoms', 'SymptomID', 'INT', 'NO', 'YES', 'NO', NULL, NULL, 'Primary Key, unique identifier for each symptom record'),
+('DepressionSymptoms', 'PatientID', 'INT', 'NO', 'NO', 'YES', 'Patient', 'PatientID', 'Foreign Key, references Patient(PatientID)'),
+('DepressionSymptoms', 'SymptomDescription', 'TEXT', 'NO', 'NO', 'NO', NULL, NULL, 'Description of the depression symptom'),
+('DepressionSymptoms', 'Severity', 'VARCHAR(255)', 'YES', 'NO', 'NO', NULL, NULL, 'Severity of the symptom'),
+
+-- PatientsSideEffects table
+('PatientsSideEffects', 'PatientID', 'INT', 'NO', 'NO', 'YES', 'Patient', 'PatientID', 'Foreign Key, references Patient(PatientID)'),
+('PatientsSideEffects', 'SideEffectID', 'INT', 'NO', 'NO', 'YES', 'SideEffect', 'SideEffectID', 'Foreign Key, references SideEffect(SideEffectID)'),
+
+-- AuditLog table
+('AuditLog', 'LogID', 'INT', 'NO', 'YES', 'NO', NULL, NULL, 'Primary Key, unique identifier for each audit log entry'),
+('AuditLog', 'TableName', 'NVARCHAR(50)', 'NO', 'NO', 'NO', NULL, NULL, 'Name of the table that was changed'),
+('AuditLog', 'Operation', 'NVARCHAR(50)', 'NO', 'NO', 'NO', NULL, NULL, 'Type of operation performed (INSERT, UPDATE, DELETE)'),
+('AuditLog', 'ChangedBy', 'NVARCHAR(50)', 'NO', 'NO', 'NO', NULL, NULL, 'User who performed the change'),
+('AuditLog', 'ChangeDate', 'DATETIME', 'NO', 'NO', 'NO', NULL, NULL, 'Date and time the change was made'),
+('AuditLog', 'OldValue', 'NVARCHAR(MAX)', 'YES', 'NO', 'NO', NULL, NULL, 'Previous value of the data'),
+('AuditLog', 'NewValue', 'NVARCHAR(MAX)', 'YES', 'NO', 'NO', NULL, NULL, 'New value of the data');
+```
+## SAMPLE DATA FOR THE TABLES
+
+```SQL
+
+-- Sample data for Patient
+INSERT INTO Patient (PatientID, Name, Address, BirthDate, EligibilityCriteria) VALUES
+(1, 'John Doe', '123 Main St, Anytown, USA', '1980-01-01', 'Met'),
+(2, 'Jane Smith', '456 Elm St, Othertown, USA', '1990-02-02', 'Met'),
+(3, 'Jim Brown', '789 Oak St, Sometown, USA', '1975-03-03', 'Met');
+
+-- Sample data for Doctor
+INSERT INTO Doctor (DoctorID, Name, Specialization, ContactInfo) VALUES
+(1, 'Dr. Alice Johnson', 'Cardiology', 'alice.johnson@hospital.com'),
+(2, 'Dr. Bob Lee', 'Neurology', 'bob.lee@hospital.com'),
+(3, 'Dr. Clara Wang', 'Pediatrics', 'clara.wang@hospital.com');
+
+-- Sample data for Visit
+INSERT INTO Visit (VisitID, Date, Time, PatientID, DoctorID, Observations) VALUES
+(1, '2025-01-15', '10:00:00', 1, 1, 'Routine check-up'),
+(2, '2025-01-16', '11:00:00', 2, 2, 'Follow-up for headaches'),
+(3, '2025-01-17', '12:00:00', 3, 3, 'Child immunization');
+
+-- Sample data for Medication
+INSERT INTO Medication (MedicationID, Name, Dosage, PotentialSideEffects) VALUES
+(1, 'Aspirin', '100mg', 'Nausea, dizziness'),
+(2, 'Ibuprofen', '200mg', 'Stomach pain, heartburn'),
+(3, 'Amoxicillin', '500mg', 'Rash, diarrhea');
+
+-- Sample data for SideEffect
+INSERT INTO SideEffect (SideEffectID, Description, Severity, MedicationID) VALUES
+(1, 'Nausea', 'Mild', 1),
+(2, 'Dizziness', 'Moderate', 1),
+(3, 'Rash', 'Mild', 3);
+
+-- Sample data for MedicalHistory
+INSERT INTO MedicalHistory (HistoryID, PatientID, Conditions, LastUpdated) VALUES
+(1, 1, 'Hypertension', '2025-01-10'),
+(2, 2, 'Migraine', '2025-01-11'),
+(3, 3, 'Asthma', '2025-01-12');
+
+-- Sample data for FamilyHistory
+INSERT INTO FamilyHistory (HistoryID, PatientID, FamilyConditions, LastUpdated) VALUES
+(1, 1, 'Heart disease', '2025-01-10'),
+(2, 2, 'Diabetes', '2025-01-11'),
+(3, 3, 'Cancer', '2025-01-12');
+
+-- Sample data for DepressionSymptoms
+INSERT INTO DepressionSymptoms (SymptomID, PatientID, SymptomDescription, Severity) VALUES
+(1, 1, 'Feeling sad', 'Moderate'),
+(2, 2, 'Loss of interest', 'Severe'),
+(3, 3, 'Fatigue', 'Mild');
+
+-- Sample data for PatientsSideEffects
+INSERT INTO PatientsSideEffects (PatientID, SideEffectID) VALUES
+(1, 1),
+(2, 2),
+(3, 3);
+```
+## INPUTTING INFORMATION INTO THE TESTPLAN TABLE
+
+``` SQL
+
+INSERT INTO TestPlan (RuleName, TestName, SQLQuery, ExpectedResult, Status)
+VALUES
+('Confidentiality', 'Access patient data as a Doctor', 'EXEC sp_addrolemember ''Doctor'', ''testDoctorUser''; SELECT * FROM Patient;', 'Patient data is accessible.', 'Pass'),
+('Confidentiality', 'Access patient data as a Nurse', 'EXEC sp_addrolemember ''Nurse'', ''testNurseUser''; SELECT * FROM Patient;', 'Patient data is accessible.', 'Pass'),
+('Confidentiality', 'Access patient data as unauthorized user', 'EXEC sp_droprolemember ''Doctor'', ''testDoctorUser''; SELECT * FROM Patient;', 'Access denied.', 'Pass'),
+```
+## CREATING ROLE BASED ACCESS CONTROLS TO LIMIT ACCESS TO THE DATABASE
+
+```SQL
+-- Access Control
+('Access Control', 'Access control check for Doctor role', 'EXEC sp_addrolemember ''Doctor'', ''testDoctorUser''; SELECT * FROM Patient;', 'Patient data is accessible.', 'Pass'),
+('Access Control', 'Access control check for Nurse role', 'EXEC sp_addrolemember ''Nurse'', ''testNurseUser''; SELECT * FROM Patient;', 'Patient data is accessible.', 'Pass'),
+('Access Control', 'Access control check for unauthorized user', 'EXEC sp_droprolemember ''Doctor'', ''testDoctorUser''; SELECT * FROM Patient;', 'Access denied.', 'Pass'),
+```
+
+```SQL
+-- Data Validation
+('Data Validation', 'Validate birth date constraint', 'INSERT INTO Patient (PatientID, Name, Address, BirthDate) VALUES (5, ''Test Patient'', ''Test Address'', ''1800-01-01'');', 'Error: CHECK constraint violated.', 'Pass'),
+('Data Validation', 'Validate specialization not null constraint', 'INSERT INTO Doctor (DoctorID, Name, ContactInfo) VALUES (5, ''Test Doctor'', ''test@hospital.com'');', 'Error: Column ''Specialization'' cannot be null.', 'Pass'),
+```
+
+``` SQL
+-- Audit Logging
+('Audit Logging', 'Insert patient and check audit log', 'INSERT INTO Patient (PatientID, Name, Address, BirthDate) VALUES (6, ''Audit Test'', ''Audit Address'', ''1990-01-01''); SELECT * FROM AuditLog WHERE TableName = ''Patient'' AND Operation = ''INSERT'' AND NewValue LIKE ''%Audit Test%'';', 'Audit log entry exists.', 'Pass'),
+('Audit Logging', 'Update patient and check audit log', 'UPDATE Patient SET Address = ''Updated Address'' WHERE PatientID = 6; SELECT * FROM AuditLog WHERE TableName = ''Patient'' AND Operation = ''UPDATE'' AND NewValue LIKE ''%Updated Address%'';', 'Audit log entry exists.', 'Pass'),
+```
+
+``` SQL
+-- Data Backup
+('Data Backup', 'Verify recent data backup', 'EXEC xp_cmdshell ''dir C:\\DatabaseBackups\\ /OD /B | findstr /R /C:"DatabaseBackup"'';', 'Recent backup file exists.', 'Pass'),
+```
+
+``` SQL
+-- Patient Eligibility
+('Patient Eligibility', 'Insert patient with unmet eligibility criteria', 'INSERT INTO Patient (PatientID, Name, Address, BirthDate, EligibilityCriteria) VALUES (7, ''Ineligible Patient'', ''Ineligible Address'', ''2000-01-01'', ''Not Met'');', 'Error: CHECK constraint violated.', 'Pass'),
+('Patient Eligibility', 'Insert patient with met eligibility criteria', 'INSERT INTO Patient (PatientID, Name, Address, BirthDate, EligibilityCriteria) VALUES (8, ''Eligible Patient'', ''Eligible Address'', ''2000-01-01'', ''Met'');', 'Patient record is inserted.', 'Pass'),
+```
+
+```SQL
+-- Protocol Adherence
+('Protocol Adherence', 'Insert visit without following protocol', 'INSERT INTO Visit (VisitID, Date, Time, PatientID, DoctorID, Observations) VALUES (5, ''2025-02-01'', ''09:00:00'', 1, 1, ''Non-compliant visit'');', 'Error: Protocol adherence check failed.', 'Pass'),
+```
+
+```SQL
+-- Simple SELECT Queries
+('Simple SELECT Queries', 'Select patients born after 1985', 'SELECT * FROM Patient WHERE BirthDate > ''1985-01-01'';', 'List of patients born after January 1, 1985.', 'Pass'),
+('Simple SELECT Queries', 'Select doctors specialized in Cardiology', 'SELECT * FROM Doctor WHERE Specialization = ''Cardiology'';', 'List of doctors specialized in Cardiology.', 'Pass'),
+('Simple SELECT Queries', 'Select visits for a specific patient', 'SELECT * FROM Visit WHERE PatientID = 1;', 'List of visits for the patient with PatientID = 1.', 'Pass'),
+```
+
+```SQL
+-- Aggregate Function Queries
+('Aggregate Function Queries', 'Count the number of patients', 'SELECT COUNT(*) AS PatientCount FROM Patient;', 'Total number of patients.', 'Pass'),
+('Aggregate Function Queries', 'Find the average age of patients', 'SELECT AVG(DATEDIFF(YEAR, BirthDate, GETDATE())) AS AverageAge FROM Patient;', 'Average age of patients.', 'Pass'),
+('Aggregate Function Queries', 'Count the number of visits per doctor', 'SELECT DoctorID, COUNT(*) AS VisitCount FROM Visit GROUP BY DoctorID;', 'List of doctors with the number of visits they have.', 'Pass'),
+```
+
+```SQL
+-- Join Queries
+('Join Queries', 'Select patient names and their corresponding doctor names for each visit', 'SELECT p.Name AS PatientName, d.Name AS DoctorName, v.Date, v.Time FROM Visit v JOIN Patient p ON v.PatientID = p.PatientID JOIN Doctor d ON v.DoctorID = d.DoctorID;', 'List of visits with patient names and their corresponding doctor names.', 'Pass'),
+('Join Queries', 'Select patients and their medical conditions', 'SELECT p.Name AS PatientName, mh.Conditions FROM MedicalHistory mh JOIN Patient p ON mh.PatientID = p.PatientID;', 'List of patients with their medical conditions.', 'Pass'),
+```
+
+``` SQL
+-- INSERT Statements
+('INSERT Statements', 'Insert a new patient', 'INSERT INTO Patient (PatientID, Name, Address, BirthDate, EligibilityCriteria) VALUES (4, ''Alice Blue'', ''101 Maple St, Anytown, USA'', ''1995-04-04'', ''Met'');', 'A new patient record for Alice Blue is inserted.', 'Pass'),
+('INSERT Statements', 'Insert a new doctor', 'INSERT INTO Doctor (DoctorID, Name, Specialization, ContactInfo) VALUES (4, ''Dr. Emily White'', ''Dermatology'', ''emily.white@hospital.com'');', 'A new doctor record for Dr. Emily White is inserted.', 'Pass'),
+('INSERT Statements', 'Insert a new visit', 'INSERT INTO Visit (VisitID, Date, Time, PatientID, DoctorID, Observations) VALUES (4, ''2025-02-01'', ''09:00:00'', 4, 4, ''First consultation'');', 'A new visit record is inserted.', 'Pass'),
+```
+
+``` SQL
+-- UPDATE and DELETE Statements
+('UPDATE and DELETE Statements', 'Update patient address', 'UPDATE Patient SET Address = ''202 Oak St, Newtown, USA'' WHERE PatientID = 1;', 'The address of the patient with PatientID = 1 is updated.', 'Pass'),
+('UPDATE and DELETE Statements', 'Delete a visit', 'DELETE FROM Visit WHERE VisitID = 1;', 'The visit record with VisitID = 1 is deleted.', 'Pass');
+```
+
+## TRIGGER FUNCTION FOR THE AUDITING CHANGES IN THE PATIENT TABLE
+
+``` SQL
+-- Trigger for auditing changes in the Patient table
+CREATE TRIGGER trg_Audit_Patient
+ON Patient
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    -- Log insertions
+    IF EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO AuditLog (TableName, Operation, ChangedBy, OldValue, NewValue)
+        SELECT 'Patient', 'INSERT', SYSTEM_USER, NULL,
+               CONCAT('PatientID=', inserted.PatientID, ', Name=', inserted.Name,
+                      ', Address=', inserted.Address, ', BirthDate=', inserted.BirthDate)
+        FROM inserted;
+    END
+    -- Log updates
+    IF EXISTS (SELECT * FROM deleted) AND EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO AuditLog (TableName, Operation, ChangedBy, OldValue, NewValue)
+        SELECT 'Patient', 'UPDATE', SYSTEM_USER,
+               CONCAT('PatientID=', deleted.PatientID, ', Name=', deleted.Name,
+                      ', Address=', deleted.Address, ', BirthDate=', deleted.BirthDate),
+               CONCAT('PatientID=', inserted.PatientID, ', Name=', inserted.Name,
+                      ', Address=', inserted.Address, ', BirthDate=', inserted.BirthDate)
+        FROM deleted
+        JOIN inserted ON deleted.PatientID = inserted.PatientID;
+    END
+    -- Log deletions
+    IF EXISTS (SELECT * FROM deleted) AND NOT EXISTS (SELECT * FROM inserted)
+    BEGIN
+        INSERT INTO AuditLog (TableName, Operation, ChangedBy, OldValue, NewValue)
+        SELECT 'Patient', 'DELETE', SYSTEM_USER,
+               CONCAT('PatientID=', deleted.PatientID, ', Name=', deleted.Name,
+                      ', Address=', deleted.Address, ', BirthDate=', deleted.BirthDate), NULL
+        FROM deleted;
+    END
+END;
+```
+
+``` SQL
+-- Select patients born after 1985
+SELECT * FROM Patient WHERE BirthDate > '1985-01-01';
+```
+
+``` SQL
+-- Select doctors specialized in Cardiology
+SELECT * FROM Doctor WHERE Specialization = 'Cardiology';
+```
+
+``` SQL
+-- Select visits for a specific patient
+SELECT * FROM Visit WHERE PatientID = 1;
+```
+
+``` SQL
+-- Count the number of patients
+SELECT COUNT(*) AS PatientCount FROM Patient;
+```
+
+``` SQL
+-- Find the average age of patients
+SELECT AVG(DATEDIFF(YEAR, BirthDate, GETDATE())) AS AverageAge FROM Patient;
+```
+
+``` SQL
+-- Count the number of visits per doctor
+SELECT DoctorID, COUNT(*) AS VisitCount FROM Visit GROUP BY DoctorID;
+```
+
+``` SQL
+-- Select patient names and their corresponding doctor names for each visit
+SELECT p.Name AS PatientName, d.Name AS DoctorName, v.Date, v.Time
+FROM Visit v
+JOIN Patient p ON v.PatientID = p.PatientID
+JOIN Doctor d ON v.DoctorID = d.DoctorID;
+```
+
+``` SQL
+-- Select patients and their medical conditions
+SELECT p.Name AS PatientName, mh.Conditions
+FROM MedicalHistory mh
+JOIN Patient p ON mh.PatientID = p.PatientID;
+```
+
+``` SQL
+-- Insert a new patient
+INSERT INTO Patient (PatientID, Name, Address, BirthDate, EligibilityCriteria)
+VALUES (4, 'Alice Blue', '101 Maple St, Anytown, USA', '1995-04-04', 'Met');
+```
+
+``` SQL
+-- Insert a new doctor
+INSERT INTO Doctor (DoctorID, Name, Specialization, ContactInfo)
+VALUES (4, 'Dr. Emily White', 'Dermatology', 'emily.white@hospital.com');
+```
+
+``` SQL
+-- Insert a new visit
+INSERT INTO Visit (VisitID, Date, Time, PatientID, DoctorID, observations)
+VALUES (4, '2025-02-01', '09:00:00', 4, 4, 'First consultation');
+```
+
+``` SQL
+-- Update patient address
+UPDATE Patient SET Address = '202 Oak St, Newtown, USA' WHERE PatientID = 1;
+```
+
+``` SQL
+-- Delete a visit
+DELETE FROM Visit WHERE VisitID = 1;
+```
+
+```SQL
+USE WestLakeClinicalTrial;
+```
+## CREATING LOGIN INFORMATION BASED ON THE ROLE BASED ACCESS REQUIREMENTS
+
+``` SQL
+-- Create logins
+CREATE LOGIN doctorLogin WITH PASSWORD = 'YourPassword1!';
+CREATE LOGIN nurseLogin WITH PASSWORD = 'YourPassword2!';
+CREATE LOGIN adminLogin WITH PASSWORD = 'YourPassword3!';
+
+-- Create users in the database
+CREATE USER doctorUser FOR LOGIN doctorLogin;
+CREATE USER nurseUser FOR LOGIN nurseLogin;
+CREATE USER adminUser FOR LOGIN adminLogin;
+
+-- Create roles
+CREATE ROLE Doctor;
+CREATE ROLE Nurse;
+CREATE ROLE Admin;
+
+-- Grant explicit permissions to roles
+GRANT SELECT, INSERT, UPDATE ON Patient TO Doctor;
+GRANT SELECT ON Patient TO Nurse;
+GRANT SELECT, INSERT, UPDATE, DELETE ON Patient TO Admin;
+GRANT SELECT, INSERT, UPDATE ON Visit TO Doctor;
+GRANT SELECT ON Visit TO Nurse;
+GRANT SELECT, INSERT, UPDATE, DELETE ON Visit TO Admin;
+GRANT SELECT, INSERT, UPDATE ON Doctor TO Admin;
+
+-- Assign roles to users
+EXEC sp_addrolemember 'Doctor', 'doctorUser';
+EXEC sp_addrolemember 'Nurse', 'nurseUser';
+EXEC sp_addrolemember 'Admin', 'adminUser';
+
+-- Add the BirthDate constraint to the Patient table
+ALTER TABLE Patient ADD CONSTRAINT CHK_BirthDate CHECK (BirthDate > '1900-01-01');
+
+-- Add the Specialization constraint to the Doctor table
+ALTER TABLE Doctor ADD CONSTRAINT CHK_Specialization CHECK (Specialization IS NOT NULL);
+
+-- Add the EligibilityCriteria column and constraint to the Patient table
+ALTER TABLE Patient ADD EligibilityCriteria VARCHAR(255);
+ALTER TABLE Patient ADD CONSTRAINT CHK_Eligibility CHECK (EligibilityCriteria = 'Met');
+
+
+ALTER TABLE Patient ADD CONSTRAINT CHK_Eligibility CHECK (EligibilityCriteria = 'Met');
+
+```
+
+
